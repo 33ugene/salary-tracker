@@ -1,6 +1,50 @@
 import sys
 import csv
 import json
+from datetime import datetime
+
+class WorkDay:
+    def __init__(self, date, classes, description=None):
+        self.date = date
+        self.classes = classes
+        self.description = description
+
+    @property
+    def classes(self):
+        return self._classes
+
+    @classes.setter
+    def classes(self, value):
+        if value < 1:
+            raise ValueError("Classes cannot be < 1. ")
+        
+        self._classes = value
+
+    @property
+    def day(self):
+        date_obj = datetime.strptime(self.date, "%Y-%m-%d")
+        day_name = date_obj.strftime("%A")
+
+        return day_name
+
+    @property
+    def date(self):
+        return self._date
+
+    @date.setter
+    def date(self, value):
+        try:
+            date_obj = datetime.strptime(value, "%Y-%m-%d")
+        except ValueError:
+            raise ValueError("Date format is wrong YYYY-MM-DD.")
+
+        self._date = value
+
+
+
+
+
+
 
 def print_menu():
     print("\n================")
@@ -10,25 +54,29 @@ def print_menu():
     print("2. View earnings")
     print("3. Exit\n")
 
-def add_work_day(days):
-    day = input("Day: ")
+def add_work_day(work_days):
+    while True:
+        date = input("\nDate: ")
 
+        try:
+            date_obj = datetime.strptime(date, "%Y-%m-%d")
+        except ValueError:
+            continue
+        break
     while True:
         try:
             classes = int(input("Classes: "))
-            if classes < 1:
-                print("Invalid classes. \n")
-                continue
         except ValueError:
             continue
-
         break
 
-    if day.lower() in days:
-        days[day.lower()].append(classes)
-    else:
-        days[day.lower()] = []
-        days[day.lower()].append(classes)
+    description = input("Description: ")
+    work_day = WorkDay(date, classes, description)
+
+    work_days.append(work_day)
+
+
+
 
 def calculate_pay(total_classes, rate):
     return total_classes * rate
@@ -62,14 +110,20 @@ def load_file():
 
 def main():
     days = load_file()
+    work_days = []
 
     while True:
         print_menu()
-        select = int(input("Select: "))
+        try:
+            select = int(input("Select: "))
+            if select < 1 or select > 3:
+                continue
+        except ValueError:
+            continue
 
         match select:
             case 1:
-                add_work_day(days)
+                add_work_day(work_days)
             case 2:
                 view_earnings(days)
             case 3:
