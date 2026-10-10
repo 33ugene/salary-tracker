@@ -44,7 +44,21 @@ def print_menu():
     print("1. Add Work Day")
     print("2. View earnings")
     print("3. Manage Work Days")
-    print("4. Exit\n")
+    print("4. Search & Analytics")
+    print("5. Exit\n")
+
+def select_func(min: int, max: int):
+    while True:
+        try:
+            select = int(input("Select: "))
+            if select < min or select > max:
+                print("Please select a valid option. ")
+                continue
+        except ValueError:
+            print("Please select a valid option. ")
+            continue
+        return select
+
 
 
 def add_work_day(work_days: list[WorkDay]):
@@ -223,7 +237,202 @@ def delete_work_day(work_days: list[WorkDay]):
             print("y - yes.\nn - no. ")
             continue
     
+def search_n_analytics_menu():
+    print("\n------Search & Analytics------\n")
+    print("1. Browse by month")
+    print("2. Browse by weekday")
+    print("3. Earnings summary")
+    print("4. Back\n")
 
+
+def search_n_analytics(work_days: list[WorkDay]):
+
+    while True:
+        search_n_analytics_menu()
+        select = select_func(1, 4)
+        
+        match select:
+            case 1:
+                sort_months(work_days)
+            case 2:
+                sort_days(work_days)
+            case 3:
+                earning_sums(work_days)
+            case 4:
+                return
+
+def earning_sums(work_days: list[WorkDay]):
+    while True:
+        try:
+            year = int(input("Year: "))
+            if year > 9999 or year < 999:
+                print("Invalid year. (Ex. 2026, 2016)")
+                continue
+        except ValueError:
+            print("Year must be an int. (Ex. 2026, 2016)")
+            continue
+        break
+
+    while True:
+        print("\n----Select month----\n")
+        print(" 1. January")
+        print(" 2. February")
+        print(" 3. March")
+        print(" 4. April")
+        print(" 5. May")
+        print(" 6. June")
+        print(" 7. July")
+        print(" 8. August")
+        print(" 9. September")
+        print("10. October")
+        print("11. November")
+        print("12. December")
+
+        month = select_func(1, 12)
+        break
+
+    
+    temp_list = []
+    total_workday = 0
+    total_classes = 0
+
+    for work_day in work_days:
+        y, m, d = work_day.date.split("-")
+        if int(y) == year:
+            if int(m) == month:
+                temp_list.append(work_day)
+                total_workday += 1
+                total_classes += work_day.classes
+
+    if not temp_list:
+        print("No work day found. ")
+        return
+    
+    highest_day = max(temp_list, key=lambda work_day: work_day.classes * 25)
+    month_name = datetime.strptime(str(month), "%m").strftime("%B")
+
+    print("\n----Earning Summary----")
+    print(f"     {month_name} {year}\n")
+    print(f"Total work day: {total_workday}")
+    print(f"Total classes: {total_classes}")
+    print(f"Total earnings: {calculate_pay(total_classes, 25)}")
+    print(f"Average earnings/day: RM{calculate_pay(total_classes, 25)/ total_workday:.2f}")
+    print(f"Average classes/day: {total_classes/total_workday:.2f}")
+    print(f"Higehst earning day: {highest_day.date} RM{(calculate_pay(highest_day.classes, 25))}")
+
+    
+
+
+def days_menu():
+    print("\n----Browse by day----\n")
+    print("1. Monday")
+    print("2. Tuesday")
+    print("3. Wednesday")
+    print("4. Thursday")
+    print("5. Friday")
+    print("6. Saturday")
+    print("7. Sunday")
+    print("0. Back\n")
+
+def sort_days(work_days: list[WorkDay]):
+    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
+    while True:
+        days_menu()
+        select = select_func(0, 7)
+
+        if select == 0:
+            return
+        else:
+            filter_days(days[select-1], work_days)
+
+        
+def filter_days(day: str, work_days: list[WorkDay]):
+    temp_list = []
+    temp_classes = 0
+    total_workday = 0
+
+    for work_day in work_days:
+        if day == work_day.day:
+            temp_list.append(work_day)
+            temp_classes += work_day.classes
+            total_workday += 1
+        else:
+            continue
+
+    if not temp_list:
+        print("No work day found for this day. ")
+        return
+    
+    for work_day in temp_list:
+        print(f"{work_day.date} ({work_day.day}): {work_day.classes} classes")
+        print(f"    {work_day.description}")    
+
+    print("\n---Weekday Summary---\n")
+    print(f"Total work days: {total_workday}")
+    print(f"Total classes: {temp_classes}")
+    print(f"Total earning: RM{calculate_pay(temp_classes, 25)}")
+    print(f"Average per work day: RM{(calculate_pay(temp_classes, 25) / total_workday):.2f}")
+
+
+def month_menu():
+    print("\n----Browse by months----\n")
+    print(" 1. January")
+    print(" 2. February")
+    print(" 3. March")
+    print(" 4. April")
+    print(" 5. May")
+    print(" 6. June")
+    print(" 7. July")
+    print(" 8. August")
+    print(" 9. September")
+    print("10. October")
+    print("11. November")
+    print("12. December")
+    print(" 0. Back\n")
+
+
+def sort_months(work_days: list[WorkDay]):
+    while True:
+        month_menu()
+        select = select_func(0, 12)
+
+        if select == 0:
+            return
+        else:
+            filter_month(select, work_days)
+
+def filter_month(month: int, work_days: list[WorkDay]):
+    temp_list = []
+    temp_classes = 0
+    total_workday = 0
+
+    for work_day in work_days:
+        compare_month = work_day.date.split("-")
+
+        if int(compare_month[1]) == month:
+            temp_list.append(work_day)
+        else:
+            continue
+
+    if not temp_list:
+        print("No work days found for this month")
+        return
+    
+    for work_day in temp_list:
+        print(f"{work_day.date} ({work_day.day}): {work_day.classes} classes")
+        print(f"    {work_day.description}")    
+        temp_classes += work_day.classes
+        total_workday += 1
+    
+    print("\n---Monthly Summary---\n")
+    print(f"Total work days: {total_workday}")
+    print(f"Total classes: {temp_classes}")
+    print(f"Total earning: RM{calculate_pay(temp_classes, 25)}")
+    print(f"Average per work day: RM{calculate_pay(temp_classes, 25) / total_workday:.2f}")
+
+
+    
 
 
 def work_day_to_dict(work_day: WorkDay):
@@ -265,13 +474,7 @@ def main():
 
     while True:
         print_menu()
-        try:
-            select = int(input("Select: "))
-            if select < 1 or select > 4:
-                print("Please select a valid option. ")
-                continue
-        except ValueError:
-            continue
+        select = select_func(1, 5)
 
         match select:
             case 1:
@@ -281,6 +484,8 @@ def main():
             case 3:
                 work_day_management(work_days)
             case 4:
+                search_n_analytics(work_days)
+            case 5:
                 save_file(work_days)
                 sys.exit("Thanks for using! ")
                 
