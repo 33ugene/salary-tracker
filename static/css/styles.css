@@ -1,0 +1,227 @@
+.debug * {
+    outline: 1px solid red
+}
+
+/* Dashboard summary cards */
+.dashboard-card {
+    min-width: 0;
+    height: 100%;
+    border: 1px solid #e9e5dc;
+    border-radius: 14px;
+    background-color: #fffefa;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.025);
+}
+
+.dashboard-card .card-body {
+    min-width: 0;
+}
+
+.dashboard-card h3 {
+    font-size: clamp(1.15rem, 2vw, 1.65rem);
+    font-weight: 700;
+    white-space: nowrap;
+    letter-spacing: -0.04em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+/* Transaction icon */
+.transaction-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background-color: #f1eee6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #625b4e;
+    font-size: 1.1rem;
+}
+
+/* Add income button */
+.btn-dark {
+    background-color: #292820;
+    border-color: #292820;
+    border-radius: 10px;
+}
+
+.btn-dark:hover {
+    background-color: #454235;
+    border-color: #454235;
+}
+
+/* Authentication pages */
+
+.auth-container {
+    min-height: calc(100vh - 70px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    background-color: #f8f7f3;
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 420px;
+    background-color: #fffefa;
+    border: 1px solid #e9e5dc;
+    border-radius: 18px;
+    padding: 40px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
+}
+
+.auth-icon {
+    width: 55px;
+    height: 55px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    border-radius: 16px;
+    background-color: #f1eee6;
+    color: #625b4e;
+    font-size: 1.5rem;
+}
+
+.auth-card .form-control {
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid #dedbd3;
+    background-color: #fff;
+}
+
+.auth-card .form-control:focus {
+    border-color: #8d8575;
+    box-shadow: 0 0 0 3px rgba(141, 133, 117, 0.15);
+}
+
+.auth-card .form-label {
+    font-weight: 500;
+    color: #454235;
+}
+
+.auth-link {
+    color: #625b4e;
+    font-weight: 600;
+    text-decoration: none;
+    margin-left: 4px;
+}
+
+.auth-link:hover {
+    color: #292820;
+    text-decoration: underline;
+}
+
+@media (max-width: 480px) {
+    .auth-card {
+        padding: 28px 22px;
+    }
+}
+
+/* Add Income Page */
+
+.add-income-card {
+    max-width: 760px;
+    margin: 0 auto;
+    background-color: #fffefa;
+    border: 1px solid #e9e5dc;
+    border-radius: 18px;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.025);
+}
+
+.add-income-card .form-label {
+    font-weight: 500;
+    color: #454235;
+    margin-bottom: 8px;
+}
+
+.add-income-card .form-control,
+.add-income-card .form-select,
+.add-income-card .input-group-text {
+    padding: 12px 14px;
+    border: 1px solid #dedbd3;
+    border-radius: 10px;
+    background-color: #fff;
+}
+
+.add-income-card .form-control:focus,
+.add-income-card .form-select:focus {
+    border-color: #8d8575;
+    box-shadow: 0 0 0 3px rgba(141, 133, 117, 0.15);
+}
+
+.add-income-card .input-group-text {
+    background-color: #f5f3ed;
+    color: #625b4e;
+}
+
+.add-income-card .input-group .form-control {
+    border-radius: 0 10px 10px 0;
+}
+
+.add-income-card .input-group .input-group-text {
+    border-radius: 10px 0 0 10px;
+}
+
+.income-preview {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    background-color: #f5f3ed;
+    border: 1px solid #e9e5dc;
+    border-radius: 12px;
+}
+
+.income-preview h4 {
+    color: #454235;
+}
+
+.add-income-card .btn {
+    border-radius: 10px;
+}
+
+.add-income-card .btn-outline-secondary {
+    border-color: #dedbd3;
+    color: #625b4e;
+}
+
+.add-income-card .btn-outline-secondary:hover {
+    background-color: #f5f3ed;
+}
+
+/* Edit transaction modal */
+#editModal .modal-content {
+    background-color: #fffefa;
+    border: 1px solid #e9e5dc;
+    border-radius: 16px;
+    box-shadow: 0 10px 35px rgba(0, 0, 0, 0.08);
+}
+
+#editModal .modal-header,
+#editModal .modal-footer {
+    border-color: #e9e5dc;
+    padding: 20px 24px;
+}
+
+#editModal .modal-body {
+    padding: 24px;
+}
+
+#editModal .form-label {
+    font-weight: 500;
+    color: #454235;
+}
+
+#editModal .form-control,
+#editModal .form-select {
+    padding: 11px 13px;
+    border: 1px solid #dedbd3;
+    border-radius: 9px;
+}
+
+#editModal .form-control:focus,
+#editModal .form-select:focus {
+    border-color: #8d8575;
+    box-shadow: 0 0 0 3px rgba(141, 133, 117, 0.15);
+}

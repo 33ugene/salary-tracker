@@ -1,0 +1,83 @@
+{% extends "layout.html" %}
+
+{% block title %}Create Account | Salary Tracker{% endblock %}
+
+{% block body %}
+
+<div class="auth-container">
+
+    <div class="auth-card">
+
+        <div class="text-center mb-4">
+            <div class="auth-icon mb-3">
+                <i class="bi bi-person-plus"></i>
+            </div>
+
+            <h2 class="fw-bold mb-2">Create an account</h2>
+            <p class="text-secondary">Start keeping track of your income.</p>
+        </div>
+
+        {% if error %}
+            <div class="alert alert-danger text-center" role="alert">
+                {{ error }}
+            </div>
+        {% endif %}
+
+        <form action="/register" method="post">
+
+            <div class="mb-3">
+                <label for="username" class="form-label">Username</label>
+                <input
+                    type="text"
+                    id="username"
+                    name="username"
+                    class="form-control"
+                    placeholder="Choose a username"
+                    autocomplete="username"
+                    value="{{ username or '' }}"
+                    required
+                >
+            </div>
+
+            <div class="mb-3">
+                <label for="password" class="form-label">Password</label>
+                <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    class="form-control"
+                    placeholder="Create a password"
+                    autocomplete="new-password"
+                    required
+                >
+            </div>
+
+            <div class="mb-4">
+                <label for="confirmation" class="form-label">Confirm Password</label>
+                <input
+                    type="password"
+                    id="confirmation"
+                    name="confirmation"
+                    class="form-control"
+                    placeholder="Enter your password again"
+                    autocomplete="new-password"
+                    required
+                >
+            </div>
+
+            <button type="submit" class="btn btn-dark w-100 py-2">
+                Create Account <i class="bi bi-arrow-right ms-2"></i>
+            </button>
+
+        </form>
+
+        <div class="text-center mt-4">
+            <span class="text-secondary">Already have an account?</span>
+            <a href="/login" class="auth-link">Log in</a>
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

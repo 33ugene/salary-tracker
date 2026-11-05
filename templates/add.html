@@ -1,0 +1,158 @@
+{% extends "layout.html" %}
+
+{% block title %}Add Income | Salary Tracker{% endblock %}
+
+{% block body %}
+
+<div class="container py-5">
+
+    <!-- Page heading -->
+    <div class="mb-4">
+        <a href="/" class="text-decoration-none text-secondary small">
+            <i class="bi bi-arrow-left me-2"></i>Back to Dashboard
+        </a>
+
+        <h2 class="fw-bold mt-3 mb-1">Add Income</h2>
+        <p class="text-secondary mb-0">
+            Record your earnings and keep track of your income.
+        </p>
+    </div>
+
+    <!-- Form card -->
+    <div class="add-income-card">
+        <div class="card-body p-4 p-md-5">
+
+            <div class="mb-4">
+                <h5 class="fw-bold mb-1">Income Details</h5>
+                <p class="text-secondary small mb-0">
+                    Fill in the details of your earnings below.
+                </p>
+            </div>
+
+            <form action="/add" method="POST">
+
+                <!-- Income category -->
+                <div class="mb-4">
+                    <label for="income_type" class="form-label">
+                        Income Category
+                    </label>
+
+                    <select class="form-select" id="income_type"
+                            name="income_type" required>
+                        <option value="" selected disabled>
+                            Select a category
+                        </option>
+                        <option value="Teaching">Teaching</option>
+                        <option value="Freelance">Freelance</option>
+                        <option value="Event">Event</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <!-- Description -->
+                <div class="mb-4">
+                    <label for="description" class="form-label">
+                        Description <span class="text-secondary">(Optional)</span>
+                    </label>
+
+                    <input type="text" class="form-control"
+                           id="description" name="description"
+                           placeholder="e.g. Saturday tuition class">
+                </div>
+
+                <!-- Date -->
+                <div class="mb-4">
+                    <label for="date" class="form-label">Date</label>
+
+                    <input type="date" class="form-control"
+                           id="date" name="date" required>
+                </div>
+
+                <!-- Quantity and rate -->
+                <div class="row g-3 mb-4">
+
+                    <div class="col-12 col-md-6">
+                        <label for="quantity" class="form-label">
+                            Quantity
+                        </label>
+
+                        <input type="number" class="form-control"
+                               id="quantity" name="quantity"
+                               min="1" step="1" placeholder="e.g. 3" required>
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <label for="rate_per_unit" class="form-label">
+                            Rate per Unit (RM)
+                        </label>
+
+                        <div class="input-group">
+                            <span class="input-group-text">RM</span>
+                            <input type="number" class="form-control"
+                                   id="rate_per_unit" name="rate_per_unit"
+                                   min="0.01" step="0.01"
+                                   placeholder="e.g. 25.00" required>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Total preview -->
+                <div class="income-preview mb-4">
+                    <div>
+                        <small class="text-secondary">Total Income</small>
+                        <p class="text-secondary small mb-0">
+                            Quantity × Rate per Unit
+                        </p>
+                    </div>
+
+                    <h4 class="fw-bold mb-0" id="income_total">RM 0</h4>
+                </div>
+
+                <!-- Submit -->
+                <div class="d-flex flex-column flex-sm-row gap-2">
+                    <a href="/" class="btn btn-outline-secondary py-3 flex-fill">
+                        Cancel
+                    </a>
+
+                    <button type="submit"
+                            class="btn btn-dark py-3 flex-fill fw-semibold">
+                        <i class="bi bi-check-lg me-2"></i>
+                        Save Income Record
+                    </button>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+
+</div>
+
+<script>
+
+    // Get the quantity and rate input fields
+    const quantityInput = document.getElementById("quantity");
+    const rateInput = document.getElementById("rate_per_unit");
+    const totalDisplay = document.getElementById("income_total");
+
+    // Function to calculate and display the total
+    function updateTotal() {
+        const quantity = Number(quantityInput.value);
+        const rate = Number(rateInput.value);
+
+        const total = quantity * rate;
+
+        totalDisplay.textContent = `RM ${total.toLocaleString("en-MY", {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2
+        })}`;
+    }
+
+    // Listen for changes in either input
+    quantityInput.addEventListener("input", updateTotal);
+    rateInput.addEventListener("input", updateTotal);
+
+</script>
+
+{% endblock %}

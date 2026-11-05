@@ -1,0 +1,71 @@
+{% extends "layout.html" %}
+
+{% block title %}Log in | Salary Tracker{% endblock %}
+
+{% block body %}
+
+<div class="auth-container">
+
+    <div class="auth-card">
+
+        <div class="text-center mb-4">
+            <div class="auth-icon mb-3">
+                <i class="bi bi-wallet2"></i>
+            </div>
+
+            <h2 class="fw-bold mb-2">Welcome back</h2>
+            <p class="text-secondary">Log in to manage your income.</p>
+        </div>
+
+        {% if error %}
+            <div class="alert alert-danger text-center" role="alert">
+                {{ error }}
+            </div>
+        {% endif %}
+
+        <form action="/login" method="post">
+
+            <div class="mb-3">
+                <label for="username" class="form-label">Username</label>
+                <input
+                    type="text"
+                    id="username"
+                    name="username"
+                    class="form-control"
+                    placeholder="Enter your username"
+                    autocomplete="username"
+                    value="{{ username or '' }}"
+                    autofocus
+                    required
+                >
+            </div>
+
+            <div class="mb-4">
+                <label for="password" class="form-label">Password</label>
+                <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    class="form-control"
+                    placeholder="Enter your password"
+                    autocomplete="current-password"
+                    required
+                >
+            </div>
+
+            <button type="submit" class="btn btn-dark w-100 py-2">
+                Log in <i class="bi bi-arrow-right ms-2"></i>
+            </button>
+
+        </form>
+
+        <div class="text-center mt-4">
+            <span class="text-secondary">Don't have an account?</span>
+            <a href="/register" class="auth-link">Create one</a>
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,128 @@
+{% extends "layout.html" %}
+
+{% block title %}Dashboard | Salary Tracker{% endblock %}
+
+{% block body %}
+
+<div class="container py-5">
+
+    <!-- Dashboard heading -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="fw-bold mb-1">Good morning, {{ username }}</h1>
+            <p class="text-secondary mb-0">Here's an overview of your income.</p>
+        </div>
+    </div>
+
+    <!-- Summary cards -->
+    <div class="row g-3">
+
+        <div class="col-12 col-md-6 col-lg-3">
+            <div class="card dashboard-card h-100">
+                <div class="card-body p-4">
+                    <p class="text-secondary mb-2">Monthly Income</p>
+                    <h3 class="fw-bold mb-2">RM {{ (month_earning / 100) | dashboard_money }}</h3>
+                    <small class="text-secondary">Your earnings this month</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-6 col-lg-3">
+            <div class="card dashboard-card h-100">
+                <div class="card-body p-4">
+                    <p class="text-secondary mb-2">Yearly Income</p>
+                    <h3 class="fw-bold mb-2">RM {{ (year_earning / 100) | dashboard_money}}</h3>
+                    <small class="text-secondary">Your earnings this year</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-6 col-lg-3">
+            <div class="card dashboard-card h-100">
+                <div class="card-body p-4">
+                    <p class="text-secondary mb-2">Total Records</p>
+                    <h3 class="fw-bold mb-2">{{ count }}</h3>
+                    <small class="text-secondary">Income records created</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-6 col-lg-3">
+            <div class="card dashboard-card h-100">
+                <div class="card-body p-4">
+                    <p class="text-secondary mb-2">Average Income</p>
+                    <h3 class="fw-bold mb-2">RM {{ (average / 100) | dashboard_money}}</h3>
+                    <small class="text-secondary">Average per record</small>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Add income button -->
+    <div class="mt-4">
+        <a href="/add" class="btn btn-dark w-100 py-3 fw-semibold">
+            <i class="bi bi-plus-lg me-2"></i>
+            Add Income Record
+        </a>
+    </div>
+
+    <!-- Recent transactions -->
+    <div class="card dashboard-card mt-4">
+        <div class="card-body p-4">
+
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0">Recent Transactions</h5>
+                <a href="/records" class="text-decoration-none text-secondary small">
+                    View all <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+
+            {% if transactions %}
+
+                {% for transaction in transactions %}
+
+                    <div class="d-flex justify-content-between align-items-center py-3 border-bottom">
+
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="transaction-icon">
+                                <i class="bi bi-wallet2"></i>
+                            </div>
+
+                            <div>
+                                <h6 class="fw-semibold mb-1">
+                                    {{ transaction["description"] or transaction["income_type"] }}
+                                </h6>
+                                <small class="text-secondary">
+                                    {{ transaction["date"] }}
+                                    · {{ transaction["income_type"] }}
+                                </small>
+                            </div>
+                        </div>
+
+                        <div class="fw-semibold text-success">
+                            + RM {{ "%.2f"|format(transaction["quantity"] * transaction["rate_per_unit"] / 100) }}
+                        </div>
+
+                    </div>
+
+                {% endfor %}
+
+            {% else %}
+
+                <div class="text-center py-5">
+                    <i class="bi bi-receipt display-4 text-secondary"></i>
+                    <h6 class="fw-semibold mt-3">No transactions yet</h6>
+                    <p class="text-secondary small mb-0">
+                        Your income records will appear here once you add them.
+                    </p>
+                </div>
+
+            {% endif %}
+
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}
