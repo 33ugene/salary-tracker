@@ -125,7 +125,7 @@ def register():
             return render_template("register.html", error="Password must be at least 8 characters")
 
         result = zxcvbn(password)
-        if result["score"] < 0:
+        if result["score"] < 3:
             return render_template("register.html", error="Password is too weak")
 
         password_hash = generate_password_hash(password)
@@ -213,11 +213,70 @@ def add():
 @app.route("/records")
 @login_required
 def records():
+    # receive form data
+    category = request.args.get("category") or None
+    month = request.args.get("month") or None
+    search = request.args.get("search") or None
+    sort = request.args.get("sort") or "newest"
+
+    # checking which query
     db = get_db()
     user_id = session["user_id"]
-    records = db.execute("SELECT * FROM income_records WHERE user_id = ?", (user_id,)).fetchall()
 
-    return render_template("records.html", records=records)
+    query = """
+        SELECT * FROM income_records
+        WHERE user_id = ?
+    """
+
+    params = [user_id]
+
+    if category:
+        query += " AND income_type = ?"
+        params.append(category)
+
+    if month:
+        query += " AND strftime('%m', date) = ?"
+        params.append(month)
+    
+    if search:
+        query += " AND description LIKE ?"
+        params.append(f"%{search}%")
+
+    sorts = {
+        "newest": " date DESC",
+        "oldest": " date ASC",
+        "highest": " (quantity * rate_per_unit) DESC",
+        "lowest": " (quantity * rate_per_unit) ASC"
+    }
+
+    query += f"ORDER BY {sorts[sort]}"
+    
+
+    records = db.execute(query, params).fetchall()
+
+    months = [
+    ("01", "January"),
+    ("02", "February"),
+    ("03", "March"),
+    ("04", "April"),
+    ("05", "May"),
+    ("06", "June"),
+    ("07", "July"),
+    ("08", "August"),
+    ("09", "September"),
+    ("10", "October"),
+    ("11", "November"),
+    ("12", "December")
+]
+
+    categories = [
+        "Teaching",
+        "Freelance",
+        "Event",
+        "Other"
+    ]
+
+    return render_template("records.html", records=records, categories=categories, category=category, months=months ,month=month, search=search, sort=sort)
 
 @app.route("/delete/<int:record_id>", methods=["POST"])
 @login_required
