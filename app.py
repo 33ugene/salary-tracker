@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, session, g
+from flask import Flask, render_template, request, redirect, session, g, Response
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
 from zxcvbn import zxcvbn
@@ -7,6 +7,9 @@ import os
 from datetime import date
 from decimal import Decimal, InvalidOperation
 from dotenv import load_dotenv
+import csv
+import io
+
 
 # confirgure the flask app
 app = Flask(__name__)
@@ -51,6 +54,16 @@ def format_dashboard_money(amount):
 app.jinja_env.filters["money"] = format_money
 app.jinja_env.filters["dashboard_money"] = format_dashboard_money
 
+def sanitize_csv_value(value):
+    if value is None:
+        return ""
+    
+    value = str(value)
+
+    if value.lstrip(" \t\r\n").startswith(("=", "+", "-", "@")):
+        return "'" + value
+
+    return value
 
 @app.route("/")
 @login_required
@@ -70,7 +83,7 @@ def index():
 
     average = db.execute("SELECT COALESCE(AVG(quantity * rate_per_unit), 0) FROM income_records WHERE user_id = ?", (user_id,)).fetchone()[0]
 
-    transactions = db.execute("SELECT * FROM income_records WHERE user_id = ? ORDER BY date DESC, id DESC", (user_id,)).fetchall()
+    transactions = db.execute("SELECT * FROM income_records WHERE user_id = ? ORDER BY date DESC, id DESC LIMIT 10", (user_id,)).fetchall()
 
 
     return render_template("index.html", username=username["username"], month_earning=month_earning, year_earning=year_earning, count=count, average=average, transactions=transactions)
@@ -242,6 +255,20 @@ def records():
         query += " AND description LIKE ?"
         params.append(f"%{search}%")
 
+    count_query = query.replace("SELECT *", "SELECT COUNT(*)")
+    total_records = db.execute(count_query, params).fetchone()[0]
+
+    page = request.args.get("page", 1, type=int)
+    page = max(page, 1)
+
+    per_page = 20
+
+    total_pages = (total_records + per_page - 1) // per_page
+
+    page = min(page, max(total_pages, 1))
+
+    offset = (page - 1) * per_page
+
     sorts = {
         "newest": " date DESC",
         "oldest": " date ASC",
@@ -249,10 +276,12 @@ def records():
         "lowest": " (quantity * rate_per_unit) ASC"
     }
 
-    query += f"ORDER BY {sorts[sort]}"
+    sort = sort if sort in sorts else "newest"
+
+    query += f" ORDER BY {sorts[sort]}, id DESC LIMIT ? OFFSET ?"
     
 
-    records = db.execute(query, params).fetchall()
+    records = db.execute(query, params + [per_page, offset]).fetchall()
 
     months = [
     ("01", "January"),
@@ -276,7 +305,91 @@ def records():
         "Other"
     ]
 
-    return render_template("records.html", records=records, categories=categories, category=category, months=months ,month=month, search=search, sort=sort)
+    current_year = date.today().year
+    years = list(range(current_year, 2020 - 1, - 1))
+
+    return render_template("records.html", records=records, categories=categories, category=category, months=months ,month=month, search=search, sort=sort, page=page, total_pages=total_pages, total_records=total_records, per_page=per_page, years=years)
+
+
+@app.route("/records/export")
+@login_required
+def export():
+    month = request.args.get("month", type=int) or None
+    year = request.args.get("year")
+    keyword = request.args.get("keyword", type=str).strip() or None
+
+    if not year:
+        return redirect("/records")
+
+    if len(year) != 4 or not year.isdigit():
+        return redirect("/records")
+
+    if month is not None and not 0 < month <= 12:
+        return redirect("/records")
+
+    query = "SELECT date, income_type, description, quantity, rate_per_unit FROM income_records WHERE user_id = ? AND strftime('%Y', date) = ?"
+    params = [session["user_id"], str(year)]
+    
+    db = get_db()
+
+    if month:
+        query += " AND strftime('%m', date) = ?"
+        params.append(f"{month:02d}")
+
+    if keyword:
+        query += " AND instr(lower(COALESCE(description, '')), lower(?)) > 0"
+        params.append(keyword)
+    
+    records = db.execute(query, params).fetchall()
+
+    output = io.StringIO()
+
+    writer = csv.writer(output)
+
+    writer.writerow([
+        "Date",
+        "Category",
+        "Description",
+        "Quantity",
+        "Rate",
+        "Total"
+    ])
+
+    csv_total = 0
+
+    for record in records:
+        rate = record["rate_per_unit"] / 100
+        total = record["quantity"] * rate
+        csv_total += total
+
+        description = sanitize_csv_value(record["description"])
+
+        writer.writerow([
+            record["date"],
+            record["income_type"],
+            description,
+            record["quantity"],
+            f"RM{rate:.2f}",
+            f"RM{total:.2f}"
+        ])
+
+    writer.writerow([
+        "",
+        "",
+        "",
+        "",
+        "Total Earnings",
+        f"RM{csv_total:.2f}",
+    ])
+
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition": 'attachment; filename="salary_tracker.csv"'
+        }
+    )
+
 
 @app.route("/delete/<int:record_id>", methods=["POST"])
 @login_required
@@ -303,19 +416,19 @@ def edit(record_id):
 
     # Check whether required fields are filled
     if not income_type or not record_date or not quantity or not rate_per_unit:
-        return render_template("records.html", error="Please fill in all required fields.")
+        return redirect("/records")
 
     valid_income = ["Teaching", "Freelance", "Event", "Other"]
 
     # Validate income type
     if income_type not in valid_income:
-        return render_template("records.html", error="Invalid income category.")
+        return redirect("/records")
     
     # Validate date
     try:
         date.fromisoformat(record_date)
     except ValueError:
-        return render_template("records.html", error="Please enter a valid date.")
+        return redirect("/records")
 
     # Validate quantity
     try:
@@ -323,7 +436,7 @@ def edit(record_id):
         if quantity <= 0:
             raise ValueError
     except ValueError:
-        return render_template("records.html", error="Quantity must be a positive integer. ")
+        return redirect("/records")
 
     # Validate rate per unit
     try:
@@ -339,7 +452,7 @@ def edit(record_id):
         rate_per_unit = int(rate_per_unit * 100)
     except (InvalidOperation, ValueError):
         print("Validation failed: invalid rate")
-        return render_template("records.html", error="Please enter valid rate (e.g 25.00)")
+        return redirect("/records")
 
     # Open database
     db = get_db()
@@ -351,7 +464,7 @@ def edit(record_id):
     except sqlite3.Error as e:
         db.rollback()
         print(e)
-        return render_template("records.html", error="Exiting failed. Try again")
+        return redirect("/records")
 
     return redirect("/records")
 

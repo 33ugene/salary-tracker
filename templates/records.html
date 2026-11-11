@@ -106,11 +106,105 @@
                                         </div>
                                     </td>
                                 </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="7" class="text-center py-5">
+                                        <div class="py-3">
+                                            <h6 class="fw-semibold mb-2">No transaction found</h6>
+
+                                            <p class="text-secondary small mb-3">
+                                                {% if category or month or search %}
+                                                Try adjusting your filters or search terms.
+                                                {% else %}
+                                                You haven't recorded any income yet.
+                                                {% endif %}
+                                            </p>
+
+                                            {% if category or month or search %}
+                                                <a href="{{ url_for('records')}}" class="btn btn-sm btn-outline-dark">
+                                                    Clear Filters
+                                                </a>
+                                            {% else %}
+                                                <a href="{{ url_for('add')}}" class="btn btn-sm btn-dark">
+                                                    Add Income
+                                                </a>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
                     </div>
+                    {% if total_records > 0 %}
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 mt-3">
+
+                        <small class="text-secondary">
+                            Showing {{ (page - 1) * per_page + 1}} - {{ [page * per_page, total_records] | min}} of {{ total_records }} records
+                        </small>
+
+                        <nav aria-label="Transaction pagination">
+                            <ul class="pagination pagination-sm mb-0">
+
+                                <li class="page-item {% if page == 1 %}disabled{% endif %}">
+                                    <a class="page-link" href="{{ url_for('records', category=category, month=month, search=search, sort=sort, page=page-1) }}">
+                                        Previous
+                                    </a>
+                                </li>
+                                {% for page_num in range(1, total_pages + 1) %}
+                                <li class="page item {% if page_num == page %}active{% endif %}">
+                                    <a class="page-link" href="{{ url_for('records', category=category, month=month, search=search, sort=sort, page=page_num) }}">
+                                        {{ page_num }}
+                                    </a>
+                                </li>
+                                {% endfor %}
+
+                                <li class="page-item {% if page == total_pages %}disabled {% endif %}">
+                                    <a class="page-link" href="{{ url_for('records', category=category, month=month, search=search, sort=sort, page=page+1) }}">
+                                        next
+                                    </a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                    {% endif %}
                 </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div>
+                        <h5 class="card-title fw-semibold mb-3">Export Transactions</h5>
+                        <p class="card-text">Choose the period you want to export</p>
+                    </div>
+                    <form method="get" action="{{ url_for('export') }}">
+                        <div class="row border-bottom mb-3">
+                            <div class="col-md-6">
+                                <label for="month" class="form-label">Month</label>
+                                <select id="month" class="form-select" name="month">
+                                    <option value="" selected>All months</option>
+                                    {% for month in months %}
+                                    <option value="{{ month[0] }}">{{ month[1] }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="year" class="form-label">Year</label>
+                                <select id="year" class="form-select" name="year">
+                                    {% for year in years %}
+                                    <option value="{{ year }}">{{ year }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-12 mb-3">
+                                <label for="keyword" class="form-label">Keyword</label>
+                                <input type="text" name="keyword" id="keyword" class="w-100 form-control" placeholder="Keyword">
+                            </div>
+                                <button type="submit" class="btn btn-dark">Export CSV</button>
+                        </div>
+                    </form>
+
+
             </div>
             <!-- Delete Confirmation Modal -->
              <div class="modal fade" id="deleteModal" tabindex="-1">
@@ -137,6 +231,7 @@
                     </div>
                 </div>
              </div>
+        </div>
 
             <!-- Edit Transaction Modal -->
             <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">

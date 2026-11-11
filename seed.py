@@ -2,7 +2,7 @@ import sqlite3
 from datetime import date, timedelta
 import random
 
-for _ in range(200):
+for _ in range(10):
     db = sqlite3.connect("database/salary.db")
 
     today = date.today()
@@ -16,5 +16,5 @@ for _ in range(200):
 
     rate = random.randint(25, 500) * 100
 
-    db.execute("INSERT INTO income_records(user_id, date, income_type, quantity, rate_per_unit) VALUES (?, ?, ?, ?, ?)", (4, random_date, income_type, quantity, rate))
+    db.execute("INSERT INTO income_records(user_id, date, description,income_type, quantity, rate_per_unit) VALUES (?, ?, ?, ?, ?, ?)", (6, random_date, "Gymnastic Coaching", income_type, quantity, rate))
     db.commit()
