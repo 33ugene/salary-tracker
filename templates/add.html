@@ -30,6 +30,7 @@
             </div>
 
             <form action="/add" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
                 <!-- Income category -->
                 <div class="mb-4">

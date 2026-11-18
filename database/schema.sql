@@ -16,3 +16,9 @@ CREATE TABLE IF NOT EXISTS income_records (
 
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
+
+CREATE TABLE IF NOT EXISTS login_attempts (
+    username TEXT NOT NULL,
+    ip TEXT NOT NULL,
+    attempted_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

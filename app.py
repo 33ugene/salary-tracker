@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, session, g, Response
+from flask import Flask, render_template, request, redirect, session, g, Response, abort
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
 from zxcvbn import zxcvbn
@@ -9,12 +9,13 @@ from decimal import Decimal, InvalidOperation
 from dotenv import load_dotenv
 import csv
 import io
-
+import secrets
 
 # confirgure the flask app
 app = Flask(__name__)
 load_dotenv()
 app.secret_key = os.environ.get("SECRET_KEY")
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax" # Cheap first layer
 
 
 # connect the database
@@ -25,6 +26,7 @@ def get_db():
     
     return g.db
 
+DUMMY_HASH = generate_password_hash(secrets.token_urlsafe(32))
 
 @app.teardown_appcontext
 def close_db(exception):
@@ -32,6 +34,20 @@ def close_db(exception):
 
     if db is not None:
         db.close()
+
+@app.before_request
+def check_csrf():
+    if request.method == "POST":
+        sent = request.form.get("csrf_token", "").encode()
+        expected = session.get("csrf_token", "").encode()
+        if not expected or not secrets.compare_digest(sent, expected):
+            abort(400)
+
+@app.context_processor
+def inject_csrf_token():
+    if "csrf_token" not in session:
+        session["csrf_token"] = secrets.token_urlsafe(32)
+    return {"csrf_token": session["csrf_token"]}
 
 
 def login_required(f):
@@ -92,21 +108,54 @@ def index():
 @app.route("/login", methods=["POST", "GET"])
 def login():
     if request.method == "POST":
-        username = request.form.get("username")
+        username = request.form.get("username") or ""
         password = request.form.get("password")
+
+        username = username[:64].strip().lower()
+
+        if len(username) > 64:
+            return render_template("login.html", error="Username is too long")
 
         if not username:
             return render_template("login.html", error="Missing username")
+
         if not password:
             return render_template("login.html", error="Missing password")
 
         db = get_db()
+
+        WINDOW, MAX_FAILURES = "-15 minutes", 5
+        failures = db.execute(
+            "SELECT COUNT(*) FROM login_attempts "
+            "WHERE username = ? AND ip = ? AND attempted_at > datetime('now', ?)",
+            (username, request.remote_addr, WINDOW),
+        ).fetchone()[0]
+
+        if failures >= MAX_FAILURES:
+            return render_template("login.html", error="Too many attempts. Try again later."), 429
+
         user = db.execute("SELECT id, password_hash FROM users WHERE username = ?", (username,)).fetchone()
-        if user is None:
-            return render_template("login.html", error="Invalid password or username")
-        if not check_password_hash(user["password_hash"], password):
+
+        password_hash = user["password_hash"] if user else DUMMY_HASH
+
+        password_verification = check_password_hash(password_hash, password)
+
+        if not user or not password_verification:
+            db.execute(
+                "INSERT INTO login_attempts (username, ip, attempted_at) "
+                "VALUES (?, ?, CURRENT_TIMESTAMP)",
+                (username, request.remote_addr)
+            )
+            db.commit()
             return render_template("login.html", error="Invalid password or username")
         
+        db.execute(
+            "DELETE FROM login_attempts "
+            "WHERE username = ? AND ip = ?",
+            (username, request.remote_addr)
+        )
+        db.commit()
+
         session.clear()
         session["user_id"] = user["id"]
 
@@ -114,15 +163,19 @@ def login():
     else:
         return render_template("login.html")
 
+
 @app.route("/register", methods=["POST", "GET"])
 def register():
     if request.method == "POST":
-        username = request.form.get("username")
+        username = request.form.get("username", "").strip().lower()
         password = request.form.get("password")
         confirmation = request.form.get("confirmation")
 
         if not username:
             return render_template("register.html", error="Username is required")
+
+        if len(username) > 64:
+            return render_template("register.html", error="Username is too long")
 
         if not password:
             return render_template("register.html", error="Password is required")
@@ -136,6 +189,11 @@ def register():
 
         if len(password) < 8:
             return render_template("register.html", error="Password must be at least 8 characters")
+
+        MAX_PASSWORD_LENGTH = 128
+
+        if len(password) > MAX_PASSWORD_LENGTH:
+            return render_template("register.html", error="Password must 128 character or lesser. ")
 
         result = zxcvbn(password)
         if result["score"] < 3:
@@ -184,10 +242,22 @@ def add():
 
         # Validate quantity
         try:
+            MAX_QUANTITY = 100_000
+            MAX_RATE = Decimal("1000000")
+
             quantity = int(quantity)
-            if quantity <= 0:
+            if not 1 <= quantity <= MAX_QUANTITY:
                 raise ValueError
-        except ValueError:
+            
+            rate = Decimal(rate_per_unit)
+            if not rate.is_finite() or not Decimal("0.01") <= rate <= MAX_RATE:
+                raise ValueError
+
+            if rate.as_tuple().exponent < -2:
+                raise ValueError
+
+            rate_sen = int(rate * 100)
+        except (ArithmeticError, ValueError):
             return render_template("add.html", error="Quantity must be a positive integer. ")
 
         # Validate rate per unit
