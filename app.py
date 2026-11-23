@@ -1,27 +1,35 @@
-from flask import Flask, render_template, request, redirect, session, g, Response, abort
+from flask import Flask, render_template, request, redirect, session, g, Response, abort, current_app
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
 from zxcvbn import zxcvbn
 from functools import wraps
 import os
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
-from dotenv import load_dotenv
 import csv
 import io
 import secrets
+from config import SECRET_KEY, DATABASE, IS_PRODUCTION
+from validators import validate_salary_data
 
 # confirgure the flask app
 app = Flask(__name__)
-load_dotenv()
-app.secret_key = os.environ.get("SECRET_KEY")
-app.config["SESSION_COOKIE_SAMESITE"] = "Lax" # Cheap first layer
+app.secret_key = SECRET_KEY
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=2)
+app.config["DATABASE"] = DATABASE
+app.config["MAX_CONTENT_LENGTH"] = 64 * 1024
+
+app.config.update(
+    SESSION_COOKIE_SECURE=IS_PRODUCTION,
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+)
 
 
 # connect the database
 def get_db():
     if "db" not in g:
-        g.db = sqlite3.connect("database/salary.db")
+        g.db = sqlite3.connect(current_app.config["DATABASE"])
         g.db.row_factory = sqlite3.Row
     
     return g.db
@@ -55,6 +63,22 @@ def login_required(f):
     def decorated_function(*args, **kwargs):
         if "user_id" not in session:
             return redirect("/login")
+
+        db = get_db()
+        
+        user = db.execute(
+            "SELECT session_version FROM users WHERE id = ?",
+            (session["user_id"],)
+        ).fetchone()
+
+        if not user:
+            session.clear()
+            return redirect("/login")
+
+        if user["session_version"] != session.get("session_version"):
+            session.clear()
+            return redirect("/login")
+
         return f(*args, **kwargs)
     return decorated_function
 
@@ -113,9 +137,6 @@ def login():
 
         username = username[:64].strip().lower()
 
-        if len(username) > 64:
-            return render_template("login.html", error="Username is too long")
-
         if not username:
             return render_template("login.html", error="Missing username")
 
@@ -134,7 +155,7 @@ def login():
         if failures >= MAX_FAILURES:
             return render_template("login.html", error="Too many attempts. Try again later."), 429
 
-        user = db.execute("SELECT id, password_hash FROM users WHERE username = ?", (username,)).fetchone()
+        user = db.execute("SELECT id, password_hash, session_version FROM users WHERE username = ?", (username,)).fetchone()
 
         password_hash = user["password_hash"] if user else DUMMY_HASH
 
@@ -158,6 +179,8 @@ def login():
 
         session.clear()
         session["user_id"] = user["id"]
+        session["session_version"] = user["session_version"]
+        session.permanent = True
 
         return redirect("/")
     else:
@@ -174,11 +197,14 @@ def register():
         if not username:
             return render_template("register.html", error="Username is required")
 
-        if len(username) > 64:
+        if len(username) > 32:
             return render_template("register.html", error="Username is too long")
 
         if not password:
             return render_template("register.html", error="Password is required")
+
+        if len(password) > 72:
+            return render_template("register.html", error="Max password length is 72 characters")
         
 
         if not confirmation:
@@ -217,81 +243,34 @@ def register():
 @login_required       
 def add():
     if request.method == "POST":
-        # Retrieve form data
-        income_type = request.form.get("income_type", "").strip()
-        description = request.form.get("description", "").strip() or None
-        record_date = request.form.get("date", "").strip()
-        quantity = request.form.get("quantity", "").strip()
-        rate_per_unit = request.form.get("rate_per_unit", "").strip()
 
-        # Check whether required fields are filled
-        if not income_type or not record_date or not quantity or not rate_per_unit:
-            return render_template("add.html", error="Please fill in all required fields.")
+        # Validates data and gets the data
+        validated_data, error = validate_salary_data(request.form)
 
-        valid_income = ["Teaching", "Freelance", "Event", "Other"]
-
-        # Validate income type
-        if income_type not in valid_income:
-            return render_template("add.html", error="Invalid income category.")
-        
-        # Validate date
-        try:
-            date.fromisoformat(record_date)
-        except ValueError:
-            return render_template("add.html", error="Please enter a valid date.")
-
-        # Validate quantity
-        try:
-            MAX_QUANTITY = 100_000
-            MAX_RATE = Decimal("1000000")
-
-            quantity = int(quantity)
-            if not 1 <= quantity <= MAX_QUANTITY:
-                raise ValueError
-            
-            rate = Decimal(rate_per_unit)
-            if not rate.is_finite() or not Decimal("0.01") <= rate <= MAX_RATE:
-                raise ValueError
-
-            if rate.as_tuple().exponent < -2:
-                raise ValueError
-
-            rate_sen = int(rate * 100)
-        except (ArithmeticError, ValueError):
-            return render_template("add.html", error="Quantity must be a positive integer. ")
-
-        # Validate rate per unit
-        try:
-            rate_per_unit = Decimal(rate_per_unit)
-
-            if not rate_per_unit.is_finite() or rate_per_unit <= 0:
-                raise ValueError
-
-            # Only two decimal places
-            if rate_per_unit.as_tuple().exponent < -2:
-                raise ValueError
-
-            rate_per_unit = int(rate_per_unit * 100)
-        except (InvalidOperation, ValueError):
-            print("Validation failed: invalid rate")
-            return render_template("add.html", error="Please enter valid rate (e.g 25.00)")
+        print(error)
+        print(validated_data)
+        if error:
+            return render_template("add.html", error=error, form_data=request.form), 400
 
         # Open database
         db = get_db()
         user_id = session["user_id"]
 
         try:
-            db.execute("INSERT INTO income_records(user_id, date, income_type, description, quantity, rate_per_unit) VALUES (?, ?, ?, ?, ?, ?)", (user_id, record_date, income_type, description, quantity, rate_per_unit))
+            db.execute(
+                "INSERT INTO income_records (user_id, date, income_type, description, quantity, rate_per_unit) "
+                "VALUES (?, ?, ?, ? , ?, ?)",
+                (user_id, validated_data["date"], validated_data["income_type"], validated_data["description"], validated_data["quantity"], validated_data["rate_per_unit"])
+            )
             db.commit()
         except sqlite3.Error as e:
             db.rollback()
             print(e)
             return render_template("add.html", error="Adding failed. Try again")
-
+        
         return redirect("/")
-
     else:
-        return render_template("add.html")
+        return render_template("add.html", form_data={})
 
 @app.route("/records")
 @login_required
@@ -474,54 +453,15 @@ def delete(record_id):
 
     return redirect("/records")
 
+
 @app.route("/edit/<int:record_id>", methods=["POST"])
 @login_required
 def edit(record_id):
-    # Retrieve form data
-    income_type = request.form.get("income_type", "").strip()
-    description = request.form.get("description", "").strip() or None
-    record_date = request.form.get("date", "").strip()
-    quantity = request.form.get("quantity", "").strip()
-    rate_per_unit = request.form.get("rate_per_unit", "").strip()
 
-    # Check whether required fields are filled
-    if not income_type or not record_date or not quantity or not rate_per_unit:
-        return redirect("/records")
+    # Retrieve validated data and error if fails
+    validated_data, error = validate_salary_data(request.form)
 
-    valid_income = ["Teaching", "Freelance", "Event", "Other"]
-
-    # Validate income type
-    if income_type not in valid_income:
-        return redirect("/records")
-    
-    # Validate date
-    try:
-        date.fromisoformat(record_date)
-    except ValueError:
-        return redirect("/records")
-
-    # Validate quantity
-    try:
-        quantity = int(quantity)
-        if quantity <= 0:
-            raise ValueError
-    except ValueError:
-        return redirect("/records")
-
-    # Validate rate per unit
-    try:
-        rate_per_unit = Decimal(rate_per_unit)
-
-        if not rate_per_unit.is_finite() or rate_per_unit <= 0:
-            raise ValueError
-
-        # Only two decimal places
-        if rate_per_unit.as_tuple().exponent < -2:
-            raise ValueError
-
-        rate_per_unit = int(rate_per_unit * 100)
-    except (InvalidOperation, ValueError):
-        print("Validation failed: invalid rate")
+    if error:
         return redirect("/records")
 
     # Open database
@@ -529,19 +469,32 @@ def edit(record_id):
     user_id = session["user_id"]
 
     try:
-        db.execute("UPDATE income_records SET date = ?, income_type = ?, description = ?, quantity = ?, rate_per_unit = ? WHERE id = ? AND user_id = ?", (record_date, income_type, description, quantity, rate_per_unit, record_id, user_id))
-        db.commit()
+        cursor = db.execute("UPDATE income_records SET date = ?, income_type = ?, description = ?, quantity = ?, rate_per_unit = ? WHERE id = ? AND user_id = ?", (validated_data["date"], validated_data["income_type"], validated_data["description"], validated_data["quantity"], validated_data["rate_per_unit"], record_id, user_id))
     except sqlite3.Error as e:
         db.rollback()
         print(e)
         return redirect("/records")
 
-    return redirect("/records")
+    if cursor.rowcount == 0:
+        flash("Unable to update this record.")
+        return redirect("/records")
 
+    return redirect("/records")
 
 
 @app.route("/logout")
 @login_required
 def logout():
+    db = get_db()
+
+    db.execute(
+        "UPDATE users "
+        "SET session_version = session_version + 1 "
+        "WHERE id = ?",
+        (session["user_id"], )
+    )
+
+    db.commit()
     session.clear()
+
     return redirect("/login")

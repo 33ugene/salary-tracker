@@ -273,3 +273,23 @@
 .pagination .page-link:focus {
     box-shadow: none;
 }
+
+
+/* Form validation error */
+.validation-error {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    background-color: #fff4f3;
+    border: 1px solid #f2d2cf;
+    border-radius: 10px;
+    color: #a33a32;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.validation-error i {
+    font-size: 1rem;
+    flex-shrink: 0;
+}

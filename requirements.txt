@@ -2,3 +2,4 @@ Flask
 werkzeug
 zxcvbn
 python-dotenv
+pytest

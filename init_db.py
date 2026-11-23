@@ -1,8 +1,9 @@
 import sqlite3
+from config import DATABASE
 
 
 # connect to database
-db = sqlite3.connect("database/salary.db")
+db = sqlite3.connect(DATABASE)
 cursor = db.cursor()
 
 # read sql file
