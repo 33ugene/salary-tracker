@@ -21,10 +21,13 @@
     <nav class="navbar navbar-expand-lg navbar-light bg-light px-4">
         <a class="navbar-brand fw-bold" href="/">Salary Tracker</a>
 
-        <div class="ms-auto">
+        <div class="ms-auto d-flex align-items-center gap-2">
             {% if "user_id" in session %}
                 <a href="/" class="btn btn-outline-dark me-2">Dashboard</a>
-                <a href="/logout" class="btn btn-dark">Log out</a>
+                <form action="/logout" method="post" class="m-0">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="btn btn-dark">Logout</button>
+                </form>
             {% else %}
                 <a href="/login" class="btn btn-outline-dark me-2">Log in</a>
                 <a href="/register" class="btn btn-dark">Register</a>

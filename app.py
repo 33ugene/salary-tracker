@@ -25,11 +25,15 @@ app.config.update(
     SESSION_COOKIE_SAMESITE="Lax",
 )
 
+print("Environment:", APP_ENV)
+print("Secure cookie:", app.config["SESSION_COOKIE_SECURE"])
+print("Database:", app.config["DATABASE"])
 
 # connect the database
 def get_db():
     if "db" not in g:
         g.db = sqlite3.connect(current_app.config["DATABASE"])
+        g.db.execute("PRAGMA foreign_keys = ON")
         g.db.row_factory = sqlite3.Row
     
     return g.db
@@ -203,7 +207,9 @@ def register():
         if not password:
             return render_template("register.html", error="Password is required")
 
-        if len(password) > 72:
+        MAX_PASSWORD_LENGTH = 72
+
+        if len(password) > MAX_PASSWORD_LENGTH:
             return render_template("register.html", error="Max password length is 72 characters")
         
 
@@ -216,10 +222,6 @@ def register():
         if len(password) < 8:
             return render_template("register.html", error="Password must be at least 8 characters")
 
-        MAX_PASSWORD_LENGTH = 128
-
-        if len(password) > MAX_PASSWORD_LENGTH:
-            return render_template("register.html", error="Password must 128 character or lesser. ")
 
         result = zxcvbn(password)
         if result["score"] < 3:
@@ -247,8 +249,6 @@ def add():
         # Validates data and gets the data
         validated_data, error = validate_salary_data(request.form)
 
-        print(error)
-        print(validated_data)
         if error:
             return render_template("add.html", error=error, form_data=request.form), 400
 
@@ -265,7 +265,6 @@ def add():
             db.commit()
         except sqlite3.Error as e:
             db.rollback()
-            print(e)
             return render_template("add.html", error="Adding failed. Try again")
         
         return redirect("/")
@@ -365,7 +364,7 @@ def records():
 def export():
     month = request.args.get("month", type=int) or None
     year = request.args.get("year")
-    keyword = request.args.get("keyword", type=str).strip() or None
+    keyword = (request.args.get("keyword", type=str) or "").strip() or None
 
     if not year:
         return redirect("/records")
@@ -443,13 +442,14 @@ def export():
 @app.route("/delete/<int:record_id>", methods=["POST"])
 @login_required
 def delete(record_id):
+
+    if not 1 <= record_id <= 2**63 - 1:
+        abort(404)
+    
     db = get_db()
     user_id = session["user_id"]
     result = db.execute("DELETE FROM income_records WHERE id = ? AND user_id = ?", (record_id, user_id))
     db.commit()
-
-    if result.rowcount != 1:
-        print("delete failed")
 
     return redirect("/records")
 
@@ -472,7 +472,6 @@ def edit(record_id):
         cursor = db.execute("UPDATE income_records SET date = ?, income_type = ?, description = ?, quantity = ?, rate_per_unit = ? WHERE id = ? AND user_id = ?", (validated_data["date"], validated_data["income_type"], validated_data["description"], validated_data["quantity"], validated_data["rate_per_unit"], record_id, user_id))
     except sqlite3.Error as e:
         db.rollback()
-        print(e)
         return redirect("/records")
 
     if cursor.rowcount == 0:
@@ -482,7 +481,12 @@ def edit(record_id):
     return redirect("/records")
 
 
-@app.route("/logout")
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template("404.html"), 404
+
+
+@app.route("/logout", methods=["POST"])
 @login_required
 def logout():
     db = get_db()
@@ -498,3 +502,4 @@ def logout():
     session.clear()
 
     return redirect("/login")
+

@@ -10,6 +10,8 @@ def validate_income_type(income_type: str):
 def validate_date(record_date: str):
     try:
         date.fromisoformat(record_date)
+        if not isinstance(record_date, str) or len(record_date) != 10:
+            raise ValueError
     except (ValueError, TypeError):
         return None
     return True
@@ -62,10 +64,11 @@ def validate_salary_data(form_data):
     rate = validate_rate(rate)
 
     if rate is None:
-        return None, "Invalid Rate"
+        return None, "Invalid rate"
 
-    if len(description) > 250:
-        return None, "Description is too long"
+    if description is not None:
+        if len(description) > 250:
+            return None, "Description is too long."
 
     return {
         "income_type": income_type,

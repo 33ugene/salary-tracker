@@ -18,6 +18,9 @@ CREATE TABLE IF NOT EXISTS income_records (
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
+CREATE INDEX IF NOT EXISTS idx_income_records_user_date
+ON income_records(user_id, date);
+
 CREATE TABLE IF NOT EXISTS login_attempts (
     username TEXT NOT NULL,
     ip TEXT NOT NULL,
