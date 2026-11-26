@@ -25,9 +25,6 @@ app.config.update(
     SESSION_COOKIE_SAMESITE="Lax",
 )
 
-print("Environment:", APP_ENV)
-print("Secure cookie:", app.config["SESSION_COOKIE_SECURE"])
-print("Database:", app.config["DATABASE"])
 
 # connect the database
 def get_db():
