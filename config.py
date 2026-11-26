@@ -21,7 +21,7 @@ if APP_ENV not in ("development", "production"):
 IS_PRODUCTION = APP_ENV == "production"
 
 DATABASE = (
-    "database/salary.db"
+    os.environ.get("DATABASE", "/data/salary.db")
     if IS_PRODUCTION
     else "database/salary_dev.db"
 )
