@@ -146,11 +146,13 @@ def login():
 
         db = get_db()
 
+        client_ip = request.headers.get("X-Real-IP") or request.remote_addr
+
         WINDOW, MAX_FAILURES = "-15 minutes", 5
         failures = db.execute(
             "SELECT COUNT(*) FROM login_attempts "
             "WHERE username = ? AND ip = ? AND attempted_at > datetime('now', ?)",
-            (username, request.remote_addr, WINDOW),
+            (username, client_ip, WINDOW),
         ).fetchone()[0]
 
         if failures >= MAX_FAILURES:
@@ -166,7 +168,7 @@ def login():
             db.execute(
                 "INSERT INTO login_attempts (username, ip, attempted_at) "
                 "VALUES (?, ?, CURRENT_TIMESTAMP)",
-                (username, request.remote_addr)
+                (username, client_ip)
             )
             db.commit()
             return render_template("login.html", error="Invalid password or username")
@@ -174,7 +176,7 @@ def login():
         db.execute(
             "DELETE FROM login_attempts "
             "WHERE username = ? AND ip = ?",
-            (username, request.remote_addr)
+            (username, client_ip)
         )
         db.commit()
 
@@ -467,6 +469,7 @@ def edit(record_id):
 
     try:
         cursor = db.execute("UPDATE income_records SET date = ?, income_type = ?, description = ?, quantity = ?, rate_per_unit = ? WHERE id = ? AND user_id = ?", (validated_data["date"], validated_data["income_type"], validated_data["description"], validated_data["quantity"], validated_data["rate_per_unit"], record_id, user_id))
+        db.commit()
     except sqlite3.Error as e:
         db.rollback()
         return redirect("/records")
