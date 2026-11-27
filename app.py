@@ -12,6 +12,7 @@ import io
 import secrets
 from config import SECRET_KEY, DATABASE, IS_PRODUCTION
 from validators import validate_salary_data
+import logging
 
 # confirgure the flask app
 app = Flask(__name__)
@@ -33,6 +34,11 @@ app.wsgi_app = ProxyFix(
     x_proto=1
 )
 
+# Logging configuration
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s"
+)
 
 # connect the database
 def get_db():
@@ -65,6 +71,16 @@ def inject_csrf_token():
     if "csrf_token" not in session:
         session["csrf_token"] = secrets.token_urlsafe(32)
     return {"csrf_token": session["csrf_token"]}
+
+@app.after_request
+def add_security_headers(response):
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+
+    if session.get("user_id"):
+        response.headers["Cache-Control"] = "no-store"
+
+    return response
 
 
 def login_required(f):
@@ -272,6 +288,7 @@ def add():
             db.commit()
         except sqlite3.Error as e:
             db.rollback()
+            logging.exception("Record not added.")
             return render_template("add.html", error="Adding failed. Try again")
         
         return redirect("/")
@@ -480,6 +497,7 @@ def edit(record_id):
         db.commit()
     except sqlite3.Error as e:
         db.rollback()
+        logging.exception("Record not edited.")
         return redirect("/records")
 
     if cursor.rowcount == 0:
