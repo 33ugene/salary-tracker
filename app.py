@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, session, g, Response, abort, current_app
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.middleware.proxy_fix import ProxyFix
 from zxcvbn import zxcvbn
 from functools import wraps
 import os
@@ -14,6 +15,7 @@ from validators import validate_salary_data
 
 # confirgure the flask app
 app = Flask(__name__)
+
 app.secret_key = SECRET_KEY
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=2)
 app.config["DATABASE"] = DATABASE
@@ -23,6 +25,12 @@ app.config.update(
     SESSION_COOKIE_SECURE=IS_PRODUCTION,
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
+)
+
+app.wsgi_app = ProxyFix(
+    app.wsgi_app,
+    x_for=1,
+    x_proto=1
 )
 
 
@@ -187,6 +195,9 @@ def login():
 
         return redirect("/")
     else:
+        print("Remote address:", request.remote_addr)
+        print("X-Forwarded-For:", request.headers.get("X-Forwarded-For"))
+        print("X-Forwarded-Proto:", request.headers.get("X-Forwarded-Proto"))
         return render_template("login.html")
 
 
