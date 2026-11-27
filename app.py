@@ -29,7 +29,7 @@ app.config.update(
 
 app.wsgi_app = ProxyFix(
     app.wsgi_app,
-    x_for=1,
+    x_for=0,
     x_proto=1
 )
 
@@ -198,6 +198,7 @@ def login():
         print("Remote address:", request.remote_addr)
         print("X-Forwarded-For:", request.headers.get("X-Forwarded-For"))
         print("X-Forwarded-Proto:", request.headers.get("X-Forwarded-Proto"))
+        print("X-Real-IP:", request.headers.get("X-Real-IP"))
         return render_template("login.html")
 
 
