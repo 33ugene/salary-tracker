@@ -195,10 +195,6 @@ def login():
 
         return redirect("/")
     else:
-        print("Remote address:", request.remote_addr)
-        print("X-Forwarded-For:", request.headers.get("X-Forwarded-For"))
-        print("X-Forwarded-Proto:", request.headers.get("X-Forwarded-Proto"))
-        print("X-Real-IP:", request.headers.get("X-Real-IP"))
         return render_template("login.html")
 
 
