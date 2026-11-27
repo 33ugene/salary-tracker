@@ -1,3 +1,4 @@
+import calendar
 from flask import Flask, render_template, request, redirect, session, g, Response, abort, current_app
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -5,7 +6,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from zxcvbn import zxcvbn
 from functools import wraps
 import os
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from decimal import Decimal, InvalidOperation
 import csv
 import io
@@ -136,6 +137,22 @@ def index():
     db = get_db()
     username = db.execute("SELECT username FROM users WHERE id = ?", (session["user_id"],)).fetchone()
 
+    monthly_income = db.execute(
+        "SELECT strftime('%m', date) AS month, SUM(quantity * rate_per_unit) AS total_income "
+        "FROM income_records "
+        "WHERE user_id = ? AND strftime('%Y', date) = ? "
+        "GROUP BY month",
+        (session["user_id"], str(datetime.now().year))
+    ).fetchall()
+
+    months = list(calendar.month_name[1:])
+    zeroes = [0] * 12
+
+    for row in monthly_income:
+        month_index = int(row["month"]) - 1
+        income = row["total_income"] / 100
+        zeroes[month_index] = income
+
     today = date.today()
     current_month = today.strftime("%Y-%m")
     current_year = today.strftime("%Y")
@@ -151,7 +168,7 @@ def index():
     transactions = db.execute("SELECT * FROM income_records WHERE user_id = ? ORDER BY date DESC, id DESC LIMIT 10", (user_id,)).fetchall()
 
 
-    return render_template("index.html", username=username["username"], month_earning=month_earning, year_earning=year_earning, count=count, average=average, transactions=transactions)
+    return render_template("index.html", username=username["username"], month_earning=month_earning, year_earning=year_earning, count=count, average=average, transactions=transactions, months=months, monthly_income=zeroes)
 
 
 @app.route("/login", methods=["POST", "GET"])
